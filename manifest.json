@@ -1,0 +1,30 @@
+{
+  "name": "AutoTrack — Gestione Auto",
+  "short_name": "AutoTrack",
+  "description": "Tieni traccia dei km e della manutenzione della tua auto",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1a18",
+  "theme_color": "#1a1a18",
+  "lang": "it",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["utilities", "automotive"],
+  "shortcuts": [
+    {
+      "name": "Aggiungi log km",
+      "short_name": "Log km",
+      "url": "./index.html#logs",
+      "description": "Aggiungi rapidamente un log chilometri"
+    },
+    {
+      "name": "Promemoria imminenti",
+      "short_name": "Imminenti",
+      "url": "./index.html#upcoming",
+      "description": "Vedi i promemoria in scadenza"
+    }
+  ]
+}

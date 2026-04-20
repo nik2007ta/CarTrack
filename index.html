@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AutoTrack">
+<meta name="theme-color" content="#1a1a18">
+<meta name="description" content="Gestione km e manutenzione auto">
+<title>AutoTrack</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #f4f3ee;
+  --surface: #ffffff;
+  --surface2: #eeede8;
+  --text: #1a1a18;
+  --text2: #6b6b64;
+  --border: rgba(0,0,0,0.09);
+  --border2: rgba(0,0,0,0.18);
+  --accent: #1a1a18;
+  --green: #3d7018;
+  --green-bg: #e8f2da;
+  --amber: #995e0c;
+  --amber-bg: #faebd6;
+  --red: #a81e1e;
+  --red-bg: #fbe8e8;
+  --blue: #1055a0;
+  --blue-bg: #e3eef9;
+  --r: 14px;
+  --r-sm: 9px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --nav-h: 64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141412;
+    --surface: #1f1f1d;
+    --surface2: #272725;
+    --text: #f0efea;
+    --text2: #98978f;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.16);
+    --green: #6db832;
+    --green-bg: #182808;
+    --amber: #d8902e;
+    --amber-bg: #281a06;
+    --red: #d85555;
+    --red-bg: #280e0e;
+    --blue: #60a0d8;
+    --blue-bg: #0c2040;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; overscroll-behavior: none; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100%; min-height: -webkit-fill-available;
+  overscroll-behavior: none;
+}
+
+/* ── LAYOUT ── */
+.app {
+  display: flex; flex-direction: column;
+  min-height: 100vh; min-height: -webkit-fill-available;
+}
+.content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(var(--safe-top) + 16px) calc(var(--safe-l) + 16px) calc(var(--nav-h) + var(--safe-bot) + 24px) calc(var(--safe-r) + 16px);
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── BOTTOM NAV ── */
+.bnav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding-bottom: var(--safe-bot);
+  z-index: 100;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.bnav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10px 4px 8px; border: none; background: none; cursor: pointer;
+  color: var(--text2); font-size: 10px; font-family: inherit; font-weight: 500;
+  gap: 4px; min-height: var(--nav-h); transition: color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.bnav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: stroke .15s; }
+.bnav-btn.active { color: var(--accent); }
+.bnav-btn.active svg { stroke-width: 2.2; }
+
+/* ── HEADER ── */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 4px 0 16px; margin-bottom: 4px;
+}
+.car-name { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
+.car-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.km-hero { text-align: right; }
+.km-big { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+.km-lbl { font-size: 11px; color: var(--text2); margin-top: 3px; }
+
+/* ── SECTION ── */
+.sec { display: none; animation: fadeIn .18s ease; }
+.sec.v { display: block; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+
+/* ── METRICS ── */
+.mgrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+.mc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px 10px; }
+.ml { font-size: 11px; color: var(--text2); margin-bottom: 4px; line-height: 1.3; }
+.mv { font-size: 19px; font-weight: 800; letter-spacing: -0.5px; }
+
+/* ── CARDS ── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+.ct { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--text); letter-spacing: -0.1px; }
+
+/* ── FORMS ── */
+.fgrid { display: grid; gap: 10px; }
+.g3 { grid-template-columns: 1fr 1fr 1fr; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.full { grid-column: 1/-1; }
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fg label { font-size: 12px; color: var(--text2); font-weight: 600; letter-spacing: 0.2px; }
+input, select, textarea {
+  font-size: 16px; /* 16px prevents iOS zoom */
+  padding: 12px 13px;
+  border: 1.5px solid var(--border2);
+  border-radius: var(--r-sm);
+  background: var(--surface2); color: var(--text);
+  font-family: inherit; width: 100%;
+  -webkit-appearance: none; appearance: none;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+textarea { resize: none; min-height: 72px; }
+.hint { font-size: 11px; color: var(--text2); margin-top: 3px; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b64' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 36px; }
+
+/* ── BUTTONS ── */
+.brow { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.btn {
+  padding: 13px 20px; font-size: 14px; font-weight: 600; font-family: inherit;
+  border-radius: var(--r-sm); cursor: pointer; border: 1.5px solid var(--border2);
+  background: var(--surface); color: var(--text); min-height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: all .12s; user-select: none;
+}
+.btn:active { transform: scale(.96); opacity: .85; }
+.btn-p { background: var(--text); color: var(--surface); border-color: var(--text); }
+.btn-d { background: var(--red-bg); color: var(--red); border-color: rgba(168,30,30,.2); }
+.btn-g { background: var(--green-bg); color: var(--green); border-color: rgba(61,112,24,.2); }
+.btn-sm { padding: 9px 14px; font-size: 13px; min-height: 38px; }
+.btn-full { width: 100%; }
+.btn-icon { padding: 10px; min-height: 44px; min-width: 44px; }
+
+/* ── LOG ITEMS ── */
+.log-list { display: flex; flex-direction: column; gap: 8px; }
+.li { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--surface2); border-radius: var(--r-sm); }
+.li-left { flex: 1; min-width: 0; }
+.lkm { font-size: 17px; font-weight: 800; letter-spacing: -0.5px; }
+.ldate { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.ldelta { font-size: 12px; color: var(--green); font-weight: 700; }
+.ltype { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+.lnote { font-size: 13px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── REMINDER ITEMS ── */
+.ri { padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 10px; }
+.ri.danger { border-color: rgba(168,30,30,.35); background: var(--red-bg); }
+.ri.warn { border-color: rgba(153,94,12,.35); background: var(--amber-bg); }
+.rh { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.rname { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+.rtag { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.3px; }
+.tag-km { background: var(--blue-bg); color: var(--blue); }
+.tag-time { background: var(--green-bg); color: var(--green); }
+.tag-both { background: var(--amber-bg); color: var(--amber); }
+.rdets { font-size: 13px; color: var(--text2); }
+.pb { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 10px 0 10px; }
+.pf { height: 100%; border-radius: 3px; transition: width .4s; }
+.p-ok { background: var(--green); }
+.p-warn { background: var(--amber); }
+.p-danger { background: var(--red); }
+.r-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+/* ── BANNERS ── */
+.banner { border-radius: var(--r); padding: 14px; margin-bottom: 12px; }
+.banner-d { background: var(--red-bg); border: 1px solid rgba(168,30,30,.25); }
+.banner-w { background: var(--amber-bg); border: 1px solid rgba(153,94,12,.25); }
+.banner-ok { background: var(--surface); border: 1px solid var(--border); }
+.btitle { font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; text-transform: uppercase; letter-spacing: 0.4px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-d { background: var(--red); }
+.dot-w { background: var(--amber); }
+.dot-ok { background: var(--green); }
+.bc-item { padding: 9px 0; border-bottom: 1px solid var(--border); }
+.bc-item:last-child { border-bottom: none; }
+.bc-name { font-size: 14px; font-weight: 700; }
+.bc-detail { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* ── MODAL (bottom sheet on mobile) ── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.5); z-index: 300;
+  align-items: flex-end; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border-radius: var(--r) var(--r) 0 0;
+  padding: 0 16px calc(var(--safe-bot) + 20px);
+  width: 100%; max-width: 600px;
+  max-height: 90vh; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 12px auto 16px; }
+.mh { font-size: 18px; font-weight: 800; margin-bottom: 16px; letter-spacing: -0.3px; }
+.mfooter { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.divider { border: none; border-top: 1px solid var(--border); margin: 14px 0 10px; }
+.slbl { font-size: 13px; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text2); }
+.tog { display: flex; gap: 8px; }
+.ti {
+  flex: 1; padding: 12px 8px; border: 1.5px solid var(--border2); border-radius: var(--r-sm);
+  cursor: pointer; text-align: center; font-size: 14px; font-weight: 600; color: var(--text2);
+  transition: all .15s; min-height: 48px; display: flex; align-items: center; justify-content: center;
+}
+.ti.on { border-color: var(--accent); background: var(--surface2); color: var(--text); }
+
+/* ── SETTINGS ── */
+.settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 12px; }
+.srow { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+.srow:last-child { border-bottom: none; }
+.srow-label { font-size: 15px; font-weight: 500; }
+.srow-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.srow-input { flex: 1; max-width: 180px; font-size: 15px; padding: 8px 10px; border: 1px solid var(--border2); border-radius: 8px; background: var(--surface2); color: var(--text); font-family: inherit; text-align: right; }
+
+/* ── MISC ── */
+.empty { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 14px; line-height: 1.6; }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.text-d { color: var(--red); font-weight: 700; }
+.text-w { color: var(--amber); font-weight: 700; }
+.section-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; }
+.badge-count { display: inline-flex; align-items: center; justify-content: center; background: var(--red); color: #fff; font-size: 10px; font-weight: 800; border-radius: 10px; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 4px; }
+
+@media (max-width: 380px) {
+  .g3 { grid-template-columns: 1fr 1fr; }
+  .mgrid { grid-template-columns: 1fr 1fr; }
+  .km-big { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- CONTENT -->
+<div class="content" id="content">
+
+<!-- DASHBOARD -->
+<div class="sec v" id="tab-dashboard">
+  <div class="hdr">
+    <div><div class="car-name" id="cn">La mia auto</div><div class="car-sub" id="cs">Configura in Impostazioni</div></div>
+    <div class="km-hero"><div class="km-big"><span id="tkm">0</span></div><div class="km-lbl">km attuali</div></div>
+  </div>
+  <div class="mgrid">
+    <div class="mc"><div class="ml">Km mese</div><div class="mv" id="kmonth">0</div></div>
+    <div class="mc"><div class="ml">Km anno</div><div class="mv" id="kyear">0</div></div>
+    <div class="mc"><div class="ml">Log totali</div><div class="mv" id="tlogs">0</div></div>
+  </div>
+  <div id="du"></div>
+  <div class="card">
+    <div class="ct">Aggiungi log km</div>
+    <div class="fgrid g2">
+      <div class="fg full"><label>Chilometri attuali *</label><input type="number" id="qkm" placeholder="Es. 45230" inputmode="numeric"></div>
+      <div class="fg"><label>Data</label><input type="date" id="qdt"></div>
+      <div class="fg"><label>Tipo</label>
+        <select id="qtp"><option value="rifornimento">⛽ Rifornimento</option><option value="viaggio">🛣 Viaggio</option><option value="manutenzione">🔧 Manutenzione</option><option value="revisione">📋 Revisione</option><option value="altro">📌 Altro</option></select>
+      </div>
+      <div class="fg full"><label>Note (facoltative)</label><input type="text" id="qnt" placeholder="Es. pieno da Eni A1..."></div>
+    </div>
+    <div class="brow"><button class="btn btn-p btn-full" onclick="addLog(1)">+ Aggiungi log</button></div>
+  </div>
+  <div class="card">
+    <div class="ct">Ultimi log</div>
+    <div id="dlogs"><div class="empty"><div class="empty-icon">🚗</div>Nessun log ancora.<br>Inizia aggiungendo i km attuali.</div></div>
+  </div>
+</div>
+
+<!-- LOG -->
+<div class="sec" id="tab-logs">
+  <div class="section-title">Log km</div>
+  <div class="card">
+    <div class="ct">Nuovo log</div>
+    <div class="fgrid g2">
+      <div class="fg full"><label>Chilometri attuali *</label><input type="number" id="lkm" placeholder="Es. 45230" inputmode="numeric"></div>
+      <div class="fg"><label>Data</label><input type="date" id="ldt"></div>
+      <div class="fg"><label>Tipo evento</label>
+        <select id="ltp"><option value="rifornimento">⛽ Rifornimento</option><option value="viaggio">🛣 Viaggio</option><option value="manutenzione">🔧 Manutenzione</option><option value="revisione">📋 Revisione</option><option value="altro">📌 Altro</option></select>
+      </div>
+      <div class="fg full"><label>Note</label><textarea id="lnt" placeholder="Descrizione..."></textarea></div>
+    </div>
+    <div class="brow"><button class="btn btn-p btn-full" onclick="addLog(0)">+ Aggiungi</button></div>
+  </div>
+  <div class="card"><div class="ct">Storico completo</div><div id="flogs"><div class="empty">Nessun log.</div></div></div>
+</div>
+
+<!-- PROMEMORIA -->
+<div class="sec" id="tab-reminders">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div class="section-title" style="margin-bottom:0">Promemoria</div>
+    <button class="btn btn-p btn-sm" onclick="openM()">+ Nuovo</button>
+  </div>
+  <div id="rlist"><div class="empty"><div class="empty-icon">🔔</div>Nessun promemoria.<br>Aggiungine uno per tracciare olio, bollo, assicurazione...</div></div>
+</div>
+
+<!-- IMMINENTI -->
+<div class="sec" id="tab-upcoming">
+  <div class="section-title">Imminenti</div>
+  <div id="uurg"></div><div id="uwrn"></div><div id="uok"></div>
+</div>
+
+<!-- IMPOSTAZIONI -->
+<div class="sec" id="tab-settings">
+  <div class="section-title">Impostazioni</div>
+  <div class="settings-card">
+    <div class="srow"><div><div class="srow-label">Nome auto</div></div><input class="srow-input" id="set-name" placeholder="La mia auto"></div>
+    <div class="srow"><div><div class="srow-label">Modello</div></div><input class="srow-input" id="set-model" placeholder="Es. Fiat Panda"></div>
+    <div class="srow"><div><div class="srow-label">Anno</div></div><input class="srow-input" id="set-year" placeholder="Es. 2021" type="number" inputmode="numeric"></div>
+    <div class="srow"><div><div class="srow-label">Targa</div></div><input class="srow-input" id="set-plate" placeholder="AB123CD" style="text-transform:uppercase"></div>
+  </div>
+  <div class="brow"><button class="btn btn-p btn-full" onclick="saveSettings()">Salva impostazioni</button></div>
+  <div style="margin-top:20px;margin-bottom:8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text2)">Dati</div>
+  <div class="brow" style="margin-top:0">
+    <button class="btn" style="flex:1" onclick="exportData()">📤 Esporta</button>
+    <button class="btn" style="flex:1" onclick="document.getElementById('imp').click()">📥 Importa</button>
+  </div>
+  <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(event)">
+  <div style="margin-top:12px">
+    <button class="btn btn-d btn-full" onclick="resetAll()">🗑 Reset tutti i dati</button>
+  </div>
+  <div style="margin-top:24px;text-align:center;font-size:12px;color:var(--text2)">AutoTrack v1.0 · Dati salvati localmente sul dispositivo</div>
+</div>
+
+</div><!-- /content -->
+
+<!-- BOTTOM NAV -->
+<nav class="bnav">
+  <button class="bnav-btn active" id="nb-dashboard" onclick="sw('dashboard',this)">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Cruscotto
+  </button>
+  <button class="bnav-btn" id="nb-reminders" onclick="sw('reminders',this)">
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    Promemoria
+    <span id="rem-badge" style="display:none" class="badge-count">!</span>
+  </button>
+  <button class="bnav-btn" id="nb-upcoming" onclick="sw('upcoming',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Imminenti
+  </button>
+  <button class="bnav-btn" id="nb-settings" onclick="sw('settings',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+    Impostazioni
+  </button>
+</nav>
+
+</div><!-- /app -->
+
+<!-- MODAL "FATTO" — conferma ultima esecuzione -->
+<div class="modal-bg" id="done-modal" onclick="if(event.target===this)closeDoneM()">
+<div class="modal">
+  <div class="modal-handle"></div>
+  <div class="mh">✓ Segna come completato</div>
+  <input type="hidden" id="done-id">
+  <div style="font-size:14px;color:var(--text2);margin-bottom:14px;line-height:1.5">
+    Aggiorna la data e i km dell'<strong>ultima esecuzione</strong>. Il prossimo promemoria verrà calcolato da questi valori.
+  </div>
+  <div class="fgrid g2">
+    <div class="fg" id="done-date-wrap">
+      <label>Data ultima esecuzione</label>
+      <input type="date" id="done-date" oninput="updateDonePreview()">
+    </div>
+    <div class="fg" id="done-km-wrap">
+      <label>Km ultima esecuzione</label>
+      <input type="number" id="done-km" placeholder="Es. 45230" inputmode="numeric" oninput="updateDonePreview()">
+    </div>
+  </div>
+  <div id="done-next-preview" style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:var(--r-sm);font-size:13px;color:var(--text2);display:none"></div>
+  <div class="mfooter">
+    <button class="btn" onclick="closeDoneM()">Annulla</button>
+    <button class="btn btn-g" onclick="confirmDone()">Conferma ✓</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL PROMEMORIA (bottom sheet) -->
+<div class="modal-bg" id="modal" onclick="if(event.target===this)closeM()">
+<div class="modal">
+  <div class="modal-handle"></div>
+  <div class="mh" id="mtit">Nuovo promemoria</div>
+  <input type="hidden" id="eid">
+  <div class="fgrid">
+    <div class="fg"><label>Nome *</label><input type="text" id="rn" placeholder="Es. Cambio olio, Bollo, Tagliando..."></div>
+    <div class="fg">
+      <label>Tipo scadenza</label>
+      <div class="tog" style="margin-top:4px">
+        <div class="ti on" id="tkm2" onclick="togT('km')">Per km</div>
+        <div class="ti on" id="ttm2" onclick="togT('time')">Per data</div>
+      </div>
+      <div class="hint">Entrambi: scatta il primo che arriva</div>
+    </div>
+    <div id="kms">
+      <hr class="divider">
+      <div class="slbl">Condizione km</div>
+      <div class="fgrid g2">
+        <div class="fg"><label>Scade a km fisso</label><input type="number" id="rkt" placeholder="Es. 50000" inputmode="numeric"></div>
+        <div class="fg"><label>Ogni N km (periodico)</label><input type="number" id="rki" placeholder="Es. 10000" inputmode="numeric"></div>
+      </div>
+    </div>
+    <div id="tms">
+      <hr class="divider">
+      <div class="slbl">Condizione data</div>
+      <div class="fgrid g2">
+        <div class="fg"><label>Scade il</label><input type="date" id="rdt"></div>
+        <div class="fg"><label>Ogni N mesi (periodico)</label><input type="number" id="rmi" placeholder="Es. 12" inputmode="numeric"></div>
+      </div>
+    </div>
+    <div>
+      <hr class="divider">
+      <div class="slbl">Avviso anticipato</div>
+      <div class="fgrid g2">
+        <div class="fg"><label>Avvisa N km prima</label><input type="number" id="rwk" placeholder="Es. 500" inputmode="numeric"></div>
+        <div class="fg"><label>Avvisa N giorni prima</label><input type="number" id="rwd" placeholder="Es. 14" inputmode="numeric"></div>
+      </div>
+    </div>
+    <div class="fg"><label>Note</label><textarea id="rno" placeholder="Note aggiuntive..."></textarea></div>
+  </div>
+  <div class="mfooter">
+    <button class="btn" onclick="closeM()">Annulla</button>
+    <button class="btn btn-p" onclick="saveR()">Salva promemoria</button>
+  </div>
+</div>
+</div>
+
+<script>
+const STORE = 'autotrack_v1';
+let S = { carName:'La mia auto', carModel:'', carYear:'', carPlate:'', logs:[], reminders:[] };
+
+function load() {
+  try { const d = localStorage.getItem(STORE); if(d) S = JSON.parse(d); } catch(e){}
+  // check hash for deep link
+  const hash = location.hash.replace('#','');
+  if(['logs','reminders','upcoming','settings'].includes(hash)) {
+    const btn = document.getElementById('nb-'+hash);
+    if(btn) sw(hash, btn);
+  }
+  render();
+}
+function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch(e){} }
+function today() { return new Date().toISOString().split('T')[0]; }
+function getCurKm() { return S.logs.length ? Math.max(...S.logs.map(l=>l.km)) : 0; }
+function getKmMonth() {
+  const n=new Date(), ls=S.logs.filter(l=>{const d=new Date(l.date);return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();});
+  if(!ls.length)return 0; return Math.max(...ls.map(l=>l.km))-Math.min(...ls.map(l=>l.km));
+}
+function getKmYear() {
+  const n=new Date(), ls=S.logs.filter(l=>new Date(l.date).getFullYear()===n.getFullYear());
+  if(!ls.length)return 0; return Math.max(...ls.map(l=>l.km))-Math.min(...ls.map(l=>l.km));
+}
+
+function sw(tab, el) {
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('v'));
+  document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('v');
+  el.classList.add('active');
+  document.getElementById('content').scrollTo(0,0);
+  if(tab==='settings') loadSettings();
+  location.hash = tab === 'dashboard' ? '' : tab;
+  render();
+}
+
+function addLog(quick) {
+  const id = quick?'q':'l';
+  const km = parseInt(document.getElementById(id+'km').value);
+  if(!km||km<0){alert('Inserisci km validi');return;}
+  const dt = document.getElementById(id+'dt').value||today();
+  const tp = document.getElementById(id+'tp').value;
+  const nt = document.getElementById(id+'nt').value;
+  S.logs.push({id:Date.now(), km, date:dt, type:tp, note:nt});
+  S.logs.sort((a,b)=>b.km-a.km);
+  document.getElementById(id+'km').value='';
+  document.getElementById(id+'nt').value='';
+  // haptic feedback
+  if(navigator.vibrate) navigator.vibrate(30);
+  save(); render();
+}
+function delLog(id) { if(!confirm('Eliminare?'))return; S.logs=S.logs.filter(l=>l.id!==id); save(); render(); }
+
+const TC={rifornimento:{c:'#3d7018',b:'#e8f2da',e:'⛽'},viaggio:{c:'#1055a0',b:'#e3eef9',e:'🛣'},manutenzione:{c:'#995e0c',b:'#faebd6',e:'🔧'},revisione:{c:'#7a2888',b:'#f2e8f8',e:'📋'},altro:{c:'#6b6b64',b:'#eeede8',e:'📌'}};
+
+function logHtml(logs, limit) {
+  if(!logs.length) return '<div class="empty"><div class="empty-icon">📋</div>Nessun log registrato.</div>';
+  const sl = [...logs].sort((a,b)=>b.km-a.km);
+  const sh = limit ? sl.slice(0,limit) : sl;
+  return '<div class="log-list">'+sh.map((l,i)=>{
+    const prev=sl[i+1], d=prev?l.km-prev.km:null;
+    const t=TC[l.type]||TC.altro;
+    return `<div class="li">
+      <div class="li-left">
+        <span class="ltype" style="background:${t.b};color:${t.c}">${t.e} ${l.type}</span>
+        <div class="lkm">${l.km.toLocaleString('it')} km</div>
+        <div class="ldate">${l.date}${d!==null?` · <span class="ldelta">+${d.toLocaleString('it')} km</span>`:''}</div>
+        ${l.note?`<div class="lnote">${l.note}</div>`:''}
+      </div>
+      <button class="btn btn-d btn-icon" onclick="delLog(${l.id})">✕</button>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function getStatus(r) {
+  const ckm=getCurKm(), td=new Date(); let kl=null, dl=null;
+  if(r.useKm){let t=r.kmTarget;if(!t&&r.kmInterval&&r.lastKm!=null)t=r.lastKm+r.kmInterval;if(!t&&r.kmInterval)t=r.kmInterval;if(t)kl=t-ckm;}
+  if(r.useTime){let t=r.dateTarget;if(!t&&r.monthInterval&&r.lastDate){const d=new Date(r.lastDate);d.setMonth(d.getMonth()+parseInt(r.monthInterval));t=d.toISOString().split('T')[0];}if(!t&&r.monthInterval){const d=new Date();d.setMonth(d.getMonth()+parseInt(r.monthInterval));t=d.toISOString().split('T')[0];}if(t)dl=Math.round((new Date(t)-td)/86400000);}
+  const wk=r.warnKm||500, wd=r.warnDays||14;
+  let u='ok';
+  if((kl!==null&&kl<=0)||(dl!==null&&dl<=0))u='danger';
+  else if((kl!==null&&kl<=wk)||(dl!==null&&dl<=wd))u='warn';
+  return{kl,dl,u};
+}
+
+function getPct(r) {
+  const ckm=getCurKm(), td=new Date(); let pct=0;
+  if(r.useKm){const from=r.lastKm!=null?r.lastKm:(ckm-(r.kmInterval||10000));const tgt=r.kmTarget||(from+(r.kmInterval||10000));pct=Math.max(0,Math.min(100,((ckm-from)/(tgt-from))*100));}
+  if(r.useTime){let ts=r.dateTarget;if(!ts&&r.monthInterval){const d=new Date(r.lastDate||td);d.setMonth(d.getMonth()+parseInt(r.monthInterval));ts=d.toISOString().split('T')[0];}if(ts){const tgt=new Date(ts),frm=new Date(r.lastDate||td),tot=tgt-frm,done=td-frm,tp=Math.max(0,Math.min(100,(done/tot)*100));pct=r.useKm?Math.max(pct,tp):tp;}}
+  return Math.round(pct);
+}
+
+function rtag(r){if(r.useKm&&r.useTime)return'<span class="rtag tag-both">Km + data</span>';if(r.useKm)return'<span class="rtag tag-km">Per km</span>';return'<span class="rtag tag-time">Per data</span>';}
+
+function detailStr(s){
+  const p=[];
+  if(s.kl!==null)p.push(s.kl<=0?`<span class="text-d">Scaduto di ${Math.abs(s.kl).toLocaleString('it')} km</span>`:`${s.kl.toLocaleString('it')} km al limite`);
+  if(s.dl!==null)p.push(s.dl<=0?`<span class="text-d">Scaduto di ${Math.abs(s.dl)} giorni</span>`:`${s.dl} giorni al limite`);
+  return p.join(' · ')||'Nessuna scadenza';
+}
+
+function renderR() {
+  const el=document.getElementById('rlist');
+  if(!S.reminders.length){el.innerHTML='<div class="empty"><div class="empty-icon">🔔</div>Nessun promemoria configurato.<br>Tocca "+ Nuovo" per aggiungerne uno.</div>';return;}
+  const sorted=[...S.reminders].sort((a,b)=>getPct(b)-getPct(a));
+  el.innerHTML=sorted.map(r=>{
+    const s=getStatus(r),pct=getPct(r),fc=s.u==='danger'?'p-danger':s.u==='warn'?'p-warn':'p-ok';
+    const lastInfo=[];
+    if(r.lastDate) lastInfo.push(`Ultima esecuzione: ${new Date(r.lastDate).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}`);
+    if(r.lastKm) lastInfo.push(`a ${r.lastKm.toLocaleString('it')} km`);
+    const lastStr=lastInfo.length?`<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">${lastInfo.join(' · ')}</div>`:'<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">Nessuna esecuzione registrata</div>';
+    return`<div class="ri ${s.u}"><div class="rh"><span class="rname">${r.name}</span>${rtag(r)}</div><div class="rdets">${detailStr(s)}</div>${lastStr}${r.notes?`<div style="font-size:12px;color:var(--text2);margin-top:5px">${r.notes}</div>`:''}<div class="pb"><div class="pf ${fc}" style="width:${pct}%"></div></div><div class="r-actions"><button class="btn btn-sm" onclick="editR(${r.id})">✎ Modifica</button><button class="btn btn-g btn-sm" onclick="done(${r.id})">✓ Fatto</button><button class="btn btn-d btn-sm" onclick="delR(${r.id})">✕</button></div></div>`;
+  }).join('');
+}
+
+function renderUp() {
+  const urg=S.reminders.filter(r=>getStatus(r).u==='danger');
+  const wrn=S.reminders.filter(r=>getStatus(r).u==='warn');
+  const ok=S.reminders.filter(r=>getStatus(r).u==='ok');
+  const crd=(r)=>{const s=getStatus(r);const lastInfo=[];if(r.lastDate)lastInfo.push(`Ultima: ${new Date(r.lastDate).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}`);if(r.lastKm)lastInfo.push(`${r.lastKm.toLocaleString('it')} km`);return`<div class="bc-item"><div class="bc-name">${r.name} ${rtag(r)}</div><div class="bc-detail">${detailStr(s)}</div>${lastInfo.length?`<div style="font-size:11px;color:var(--text2);margin-top:2px;font-style:italic">${lastInfo.join(' · ')}</div>`:''}</div>`;};
+  document.getElementById('uurg').innerHTML=urg.length?`<div class="banner banner-d"><div class="btitle"><div class="dot dot-d"></div>Scaduti — intervieni subito (${urg.length})</div>${urg.map(crd).join('')}</div>`:'';
+  document.getElementById('uwrn').innerHTML=wrn.length?`<div class="banner banner-w"><div class="btitle"><div class="dot dot-w"></div>In scadenza — pianifica (${wrn.length})</div>${wrn.map(crd).join('')}</div>`:'';
+  if(ok.length)document.getElementById('uok').innerHTML=`<div class="banner banner-ok"><div class="btitle"><div class="dot dot-ok"></div>Tutto in regola (${ok.length})</div>${ok.map(crd).join('')}</div>`;
+  else if(!urg.length&&!wrn.length)document.getElementById('uok').innerHTML='<div class="empty"><div class="empty-icon">✅</div>Nessun promemoria configurato.<br>Vai in "Promemoria" per aggiungerne uno.</div>';
+  else document.getElementById('uok').innerHTML='';
+}
+
+function renderDash() {
+  const urg=S.reminders.filter(r=>getStatus(r).u==='danger');
+  const wrn=S.reminders.filter(r=>getStatus(r).u==='warn');
+  let h='';
+  if(urg.length)h+=`<div class="banner banner-d" style="margin-bottom:10px"><div class="btitle"><div class="dot dot-d"></div>${urg.length} promemori scaduti</div><div style="font-size:13px;color:var(--red)">${urg.map(r=>r.name).join(', ')}</div></div>`;
+  if(wrn.length)h+=`<div class="banner banner-w" style="margin-bottom:10px"><div class="btitle"><div class="dot dot-w"></div>${wrn.length} in scadenza</div><div style="font-size:13px;color:var(--amber)">${wrn.map(r=>r.name).join(', ')}</div></div>`;
+  document.getElementById('du').innerHTML=h;
+  // badge on reminder tab
+  const total=urg.length+wrn.length;
+  const badge=document.getElementById('rem-badge');
+  if(total>0){badge.textContent=total;badge.style.display='inline-flex';}else{badge.style.display='none';}
+}
+
+function render() {
+  const km=getCurKm();
+  document.getElementById('tkm').textContent=km.toLocaleString('it');
+  document.getElementById('cn').textContent=S.carName||'La mia auto';
+  let sub=S.carModel||''; if(S.carYear) sub+=(sub?' · ':'')+S.carYear; if(S.carPlate) sub+=(sub?' · ':'')+S.carPlate.toUpperCase();
+  document.getElementById('cs').textContent=sub||'Configura in Impostazioni';
+  document.getElementById('kmonth').textContent=getKmMonth().toLocaleString('it');
+  document.getElementById('kyear').textContent=getKmYear().toLocaleString('it');
+  document.getElementById('tlogs').textContent=S.logs.length;
+  document.getElementById('dlogs').innerHTML=logHtml(S.logs,5);
+  document.getElementById('flogs').innerHTML=logHtml(S.logs);
+  renderR(); renderUp(); renderDash();
+}
+
+let uk=true, ut=true;
+function togT(t){
+  if(t==='km'){uk=!uk;if(!ut)uk=true;}
+  if(t==='time'){ut=!ut;if(!uk)ut=true;}
+  document.getElementById('tkm2').classList.toggle('on',uk);
+  document.getElementById('ttm2').classList.toggle('on',ut);
+  document.getElementById('kms').style.display=uk?'':'none';
+  document.getElementById('tms').style.display=ut?'':'none';
+}
+
+function openM(){
+  document.getElementById('mtit').textContent='Nuovo promemoria';
+  ['eid','rn','rkt','rki','rdt','rmi','rwk','rwd','rno'].forEach(id=>document.getElementById(id).value='');
+  uk=true;ut=true;
+  document.getElementById('tkm2').classList.add('on');document.getElementById('ttm2').classList.add('on');
+  document.getElementById('kms').style.display='';document.getElementById('tms').style.display='';
+  document.getElementById('modal').classList.add('open');
+}
+function closeM(){document.getElementById('modal').classList.remove('open');}
+
+function editR(id){
+  const r=S.reminders.find(x=>x.id===id);if(!r)return;
+  document.getElementById('mtit').textContent='Modifica promemoria';
+  document.getElementById('eid').value=id;
+  document.getElementById('rn').value=r.name;
+  document.getElementById('rkt').value=r.kmTarget||'';
+  document.getElementById('rki').value=r.kmInterval||'';
+  document.getElementById('rdt').value=r.dateTarget||'';
+  document.getElementById('rmi').value=r.monthInterval||'';
+  document.getElementById('rwk').value=r.warnKm||'';
+  document.getElementById('rwd').value=r.warnDays||'';
+  document.getElementById('rno').value=r.notes||'';
+  uk=r.useKm;ut=r.useTime;
+  document.getElementById('tkm2').classList.toggle('on',uk);document.getElementById('ttm2').classList.toggle('on',ut);
+  document.getElementById('kms').style.display=uk?'':'none';document.getElementById('tms').style.display=ut?'':'none';
+  document.getElementById('modal').classList.add('open');
+}
+
+function saveR(){
+  const name=document.getElementById('rn').value.trim();if(!name){alert('Inserisci un nome');return;}
+  const id=document.getElementById('eid').value;
+  const obj={id:id?parseInt(id):Date.now(),name,useKm:uk,useTime:ut,
+    kmTarget:parseInt(document.getElementById('rkt').value)||null,
+    kmInterval:parseInt(document.getElementById('rki').value)||null,
+    dateTarget:document.getElementById('rdt').value||null,
+    monthInterval:parseInt(document.getElementById('rmi').value)||null,
+    warnKm:parseInt(document.getElementById('rwk').value)||500,
+    warnDays:parseInt(document.getElementById('rwd').value)||14,
+    notes:document.getElementById('rno').value,lastKm:null,lastDate:null};
+  if(id){S.reminders=S.reminders.map(r=>r.id===parseInt(id)?{...r,...obj,lastKm:r.lastKm,lastDate:r.lastDate}:r);}
+  else{S.reminders.push(obj);}
+  if(navigator.vibrate) navigator.vibrate(30);
+  closeM();save();render();
+}
+
+function delR(id){if(!confirm('Eliminare?'))return;S.reminders=S.reminders.filter(r=>r.id!==id);save();render();}
+
+function done(id){
+  const r=S.reminders.find(x=>x.id===id);if(!r)return;
+  // pre-fill with current values
+  document.getElementById('done-id').value=id;
+  document.getElementById('done-date').value=r.lastDate||today();
+  document.getElementById('done-km').value=r.lastKm||getCurKm()||'';
+  // show/hide fields based on reminder type
+  document.getElementById('done-date-wrap').style.display=r.useTime?'':'none';
+  document.getElementById('done-km-wrap').style.display=r.useKm?'':'none';
+  updateDonePreview();
+  document.getElementById('done-modal').classList.add('open');
+}
+
+function openDoneM(){}
+function closeDoneM(){document.getElementById('done-modal').classList.remove('open');}
+
+function updateDonePreview(){
+  const id=parseInt(document.getElementById('done-id').value);
+  const r=S.reminders.find(x=>x.id===id);if(!r)return;
+  const kmVal=parseInt(document.getElementById('done-km').value)||0;
+  const dateVal=document.getElementById('done-date').value||today();
+  const parts=[];
+  if(r.kmInterval&&r.useKm) parts.push(`Prossimo a <strong>${(kmVal+r.kmInterval).toLocaleString('it')} km</strong>`);
+  if(r.monthInterval&&r.useTime){const d=new Date(dateVal);d.setMonth(d.getMonth()+r.monthInterval);parts.push(`Prossimo il <strong>${d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}</strong>`);}
+  if(r.kmTarget&&r.useKm&&!r.kmInterval) parts.push(`Scadenza km fissa: <strong>${r.kmTarget.toLocaleString('it')} km</strong>`);
+  if(r.dateTarget&&r.useTime&&!r.monthInterval) parts.push(`Scadenza data fissa: <strong>${new Date(r.dateTarget).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'})}</strong>`);
+  const el=document.getElementById('done-next-preview');
+  if(parts.length){el.innerHTML='Prossima scadenza → '+parts.join(' · ');el.style.display='';}
+  else{el.style.display='none';}
+}
+
+function confirmDone(){
+  const id=parseInt(document.getElementById('done-id').value);
+  const r=S.reminders.find(x=>x.id===id);if(!r)return;
+  const kmVal=parseInt(document.getElementById('done-km').value)||null;
+  const dateVal=document.getElementById('done-date').value||today();
+  r.lastDate=dateVal;
+  r.lastKm=kmVal;
+  if(r.kmInterval&&kmVal) r.kmTarget=kmVal+r.kmInterval;
+  if(r.monthInterval){const d=new Date(dateVal);d.setMonth(d.getMonth()+r.monthInterval);r.dateTarget=d.toISOString().split('T')[0];}
+  if(navigator.vibrate) navigator.vibrate([30,50,30]);
+  closeDoneM();save();render();
+}
+
+function loadSettings(){
+  document.getElementById('set-name').value=S.carName||'';
+  document.getElementById('set-model').value=S.carModel||'';
+  document.getElementById('set-year').value=S.carYear||'';
+  document.getElementById('set-plate').value=S.carPlate||'';
+}
+function saveSettings(){
+  S.carName=document.getElementById('set-name').value||'La mia auto';
+  S.carModel=document.getElementById('set-model').value;
+  S.carYear=document.getElementById('set-year').value;
+  S.carPlate=document.getElementById('set-plate').value.toUpperCase();
+  save();render();
+  if(navigator.vibrate) navigator.vibrate(40);
+}
+function resetAll(){if(!confirm('Eliminare TUTTI i dati?'))return;S={carName:'La mia auto',carModel:'',carYear:'',carPlate:'',logs:[],reminders:[]};save();render();}
+
+function exportData(){
+  const a=document.createElement('a');
+  a.href='data:application/json,'+encodeURIComponent(JSON.stringify(S,null,2));
+  a.download='autotrack_backup_'+today()+'.json';a.click();
+}
+function importData(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{try{S=JSON.parse(ev.target.result);save();render();alert('Dati importati!');}catch(err){alert('File non valido.');}};
+  r.readAsText(f);
+}
+
+// PWA install prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
+
+// Service Worker
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+document.getElementById('qdt').value=today();
+document.getElementById('ldt').value=today();
+load();
+</script>
+</body>
+</html>
